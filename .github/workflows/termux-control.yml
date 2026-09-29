@@ -29,12 +29,12 @@ jobs:
       - name: Checkout control plane
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Verify runner
         shell: bash
-        run: ./scripts/doctor.sh
+        run: bash scripts/doctor.sh
 
       - name: Execute new request files
         shell: bash
@@ -76,7 +76,7 @@ jobs:
               echo "Skipping deleted request: $request"
               continue
             fi
-            ./scripts/exec-job.sh "$request" || overall=$?
+            bash scripts/exec-job.sh "$request" || overall=$?
           done
 
           exit "$overall"
