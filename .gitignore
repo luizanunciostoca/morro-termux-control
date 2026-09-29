@@ -1,0 +1,4 @@
+.morro-control/
+*.log
+*.pid
+.DS_Store

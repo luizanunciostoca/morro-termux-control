@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "id": "doctor-example",
+  "description": "Example runner diagnostic",
+  "cwd": "~",
+  "timeout_seconds": 120,
+  "command": "uname -a; id; pwd; git --version; node --version || true; python3 --version || true"
+}

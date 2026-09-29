@@ -1,0 +1,91 @@
+name: Morro Termux Control
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "jobs/requests/*.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: morro-termux-control
+  cancel-in-progress: false
+
+jobs:
+  execute:
+    if: github.actor == 'luizanunciostoca'
+    runs-on:
+      - self-hosted
+      - Linux
+      - ARM64
+      - morro-termux
+    timeout-minutes: 65
+
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify runner
+        shell: bash
+        run: bash scripts/doctor.sh
+
+      - name: Execute new request files
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            echo "Manual dispatch is diagnostic-only. No command request will be executed."
+            exit 0
+          fi
+
+          before="$(jq -r '.before // ""' "$GITHUB_EVENT_PATH")"
+
+          if [[ -z "$before" || "$before" =~ ^0+$ ]]; then
+            changed="$(git diff-tree --no-commit-id --name-only -r "$GITHUB_SHA" || true)"
+          else
+            changed="$(git diff --name-only "$before" "$GITHUB_SHA" || true)"
+          fi
+
+          mapfile -t requests < <(
+            printf '%s\n' "$changed" |
+              grep -E '^jobs/requests/[A-Za-z0-9._-]+\.json$' |
+              sort -u || true
+          )
+
+          if (( ${#requests[@]} == 0 )); then
+            echo "No executable request files found in this push."
+            exit 0
+          fi
+
+          if (( ${#requests[@]} > 20 )); then
+            echo "Refusing push: more than 20 jobs were submitted in one commit."
+            exit 64
+          fi
+
+          overall=0
+          for request in "${requests[@]}"; do
+            if [[ ! -f "$request" ]]; then
+              echo "Skipping deleted request: $request"
+              continue
+            fi
+            bash scripts/exec-job.sh "$request" || overall=$?
+          done
+
+          exit "$overall"
+
+      - name: Upload execution evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: morro-termux-results
+          path: .morro-control/results/
+          if-no-files-found: ignore
+          retention-days: 30
