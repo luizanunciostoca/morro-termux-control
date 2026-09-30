@@ -18,7 +18,7 @@ mkdir -p "$RESULT_DIR" "$DONE_DIR" "$CLAIMED_DIR" "$LOG_DIR"
 touch "$LOG_DIR/agent.log"
 
 log() {
-  printf '[%s] %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" | tee -a "$LOG_DIR/agent.log"
+  printf '[%s] %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"
 }
 
 require_cmd() {
