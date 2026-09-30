@@ -49,7 +49,7 @@ case "${1:-status}" in
     echo "agent=STOP_REQUESTED"
     ;;
   restart)
-    "$0" stop
+    bash "$0" stop
     sleep 2
     start_agent
     ;;
