@@ -2,69 +2,81 @@
 
 Private control plane for persistent command execution on the Morro Digital Android/Termux workstation.
 
-## Architecture
+## Preferred architecture — Native Termux Agent V2
 
 ```
 ChatGPT
    |
 GitHub connector
    |
-luizanunciostoca/morro-termux-control (private)
+private GitHub issue: [TERMUX-JOB]
    |
-GitHub Actions
+native Bash agent in Termux
    |
-self-hosted ARM64 runner
+Termux or Debian/PRoot
    |
-Debian / PRoot
-   |
-Termux / Android (SM-X820)
+result comment + issue close
 ```
 
-## What this provides
+This is the preferred transport for Android ARM64 because it does not depend on the official GitHub Actions runner or its embedded .NET/CoreCLR runtime.
 
-- Persistent GitHub-controlled runner on the tablet.
-- Automatic restart if the runner process exits.
-- Automatic startup after Android reboot through Termux:Boot.
-- Serialized command execution.
-- Per-job timeout.
-- Captured stdout, stderr, exit code and timestamps.
-- GitHub Actions artifacts for execution evidence.
-- Local start/stop/restart/status/log controls.
-- No dependency on Remote Desktop Commander for normal shell execution.
+## Capabilities
 
-## Execution boundary
+- persistent command polling through the private GitHub repository;
+- direct Termux execution;
+- Debian/PRoot execution;
+- explicit request schema and owner verification;
+- per-command timeout;
+- stdout/stderr capture;
+- local completion markers;
+- duplicate-execution protection after interrupted jobs;
+- GitHub issue result/audit trail;
+- remote heartbeat issue;
+- local start/stop/restart/status/log controls.
 
-Only an authenticated push by `luizanunciostoca` to `main` that adds or changes:
+## Job format
 
-```
-jobs/requests/*.json
-```
+Issue title:
 
-can execute a command.
+`[TERMUX-JOB] descriptive title`
 
-Pull requests do not execute shell commands on the tablet.
-
-## Job schema
+Issue body:
 
 ```json
 {
-  "version": 1,
+  "version": 2,
+  "confirm": "EXECUTE",
   "id": "unique-job-id",
-  "description": "What this job is expected to do",
+  "target": "termux",
   "cwd": "~",
   "timeout_seconds": 900,
   "command": "pwd; git status"
 }
 ```
 
-Maximum command timeout: 3600 seconds.
+Target may be `termux` or `debian`.
 
-## Setup
+## Local controls
 
-See [docs/SETUP.md](docs/SETUP.md).
+```bash
+cd "$HOME/morro-termux-control"
+
+bash scripts/termux-native-agentctl.sh start
+bash scripts/termux-native-agentctl.sh status
+bash scripts/termux-native-agentctl.sh once
+bash scripts/termux-native-agentctl.sh restart
+bash scripts/termux-native-agentctl.sh stop
+bash scripts/termux-native-agentctl.sh logs
+```
+
+See [docs/NATIVE_AGENT.md](docs/NATIVE_AGENT.md).
+
+## Legacy Actions Runner
+
+The original GitHub Actions self-hosted runner implementation remains in repository history for reference, but is not the preferred Android transport.
 
 ## Security
 
-See [SECURITY.md](SECURITY.md).
+The repository must remain private. The native agent only accepts jobs authored by `luizanunciostoca`, with the required title prefix, schema version, explicit execution confirmation, supported target, and bounded timeout.
 
-This bridge does not grant Android root privileges. Commands run with the permissions actually available to Debian/PRoot, Termux and any separately authorized local interfaces such as ADB or Termux:API.
+This bridge does not grant Android root privileges. Commands run only with permissions already available to Termux, Debian/PRoot, and separately authorized interfaces such as ADB or Termux:API.
