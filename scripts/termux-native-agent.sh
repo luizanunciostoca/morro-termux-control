@@ -129,46 +129,51 @@ resolve_termux_cwd() {
 
 publish_result() {
   local issue="$1" result_meta="$2" stdout_log="$3" stderr_log="$4"
-  local id target exit_code started ended duration hash out err body
+  local id target exit_code started ended duration hash out err comment_file
 
-  id="$(jq -r '.id' "$result_meta")"
-  target="$(jq -r '.target' "$result_meta")"
-  exit_code="$(jq -r '.exit_code' "$result_meta")"
-  started="$(jq -r '.started_at' "$result_meta")"
-  ended="$(jq -r '.ended_at' "$result_meta")"
-  duration="$(jq -r '.duration_seconds' "$result_meta")"
-  hash="$(jq -r '.request_sha256' "$result_meta")"
+  id="$(jq -er '.id' "$result_meta")"
+  target="$(jq -er '.target' "$result_meta")"
+  exit_code="$(jq -er '.exit_code' "$result_meta")"
+  started="$(jq -er '.started_at' "$result_meta")"
+  ended="$(jq -er '.ended_at' "$result_meta")"
+  duration="$(jq -er '.duration_seconds' "$result_meta")"
+  hash="$(jq -er '.request_sha256' "$result_meta")"
 
   out="$(tail -c 12000 "$stdout_log" 2>/dev/null || true)"
   err="$(tail -c 12000 "$stderr_log" 2>/dev/null || true)"
+  comment_file="$RESULT_DIR/$issue/comment.md"
 
-  body="$(cat <<EOF
-MORRO_AGENT_RESULT_V2
+  {
+    echo "MORRO_AGENT_RESULT_V3"
+    echo
+    printf '%s\n' "- id: $id"
+    printf '%s\n' "- target: $target"
+    printf '%s\n' "- exit_code: $exit_code"
+    printf '%s\n' "- started_at: $started"
+    printf '%s\n' "- ended_at: $ended"
+    printf '%s\n' "- duration_seconds: $duration"
+    printf '%s\n' "- request_sha256: $hash"
+    echo
+    echo "#### metadata_json"
+    echo '\`\`\`json'
+    jq -c . "$result_meta"
+    echo '\`\`\`'
+    echo
+    echo "#### stdout (last 12000 bytes)"
+    echo '\`\`\`text'
+    printf '%s\n' "$out"
+    echo '\`\`\`'
+    echo
+    echo "#### stderr (last 12000 bytes)"
+    echo '\`\`\`text'
+    printf '%s\n' "$err"
+    echo '\`\`\`'
+    echo
+    echo "Full local logs remain on the tablet under:"
+    printf '%s\n' "$RESULT_DIR/$issue/"
+  } > "$comment_file"
 
-- id: $id
-- target: $target
-- exit_code: $exit_code
-- started_at: $started
-- ended_at: $ended
-- duration_seconds: $duration
-- request_sha256: $hash
-
-#### stdout (last 12000 bytes)
-\`\`\`text
-$out
-\`\`\`
-
-#### stderr (last 12000 bytes)
-\`\`\`text
-$err
-\`\`\`
-
-Full local logs remain on the tablet under:
-$RESULT_DIR/$issue/
-EOF
-)"
-
-  if gh issue comment "$issue" --repo "$REPO" --body "$body" >/dev/null; then
+  if gh issue comment "$issue" --repo "$REPO" --body-file "$comment_file" >/dev/null; then
     gh issue close "$issue" --repo "$REPO" >/dev/null
     log "Published and closed issue #$issue (exit=$exit_code)"
     return 0
