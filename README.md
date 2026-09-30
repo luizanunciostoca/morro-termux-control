@@ -1,5 +1,7 @@
 # Morro Termux Control
 
+> **ChatGPT/operator:** read [CHATGPT-START-HERE.md](CHATGPT-START-HERE.md) first. It is the durable contract for using the persistent Termux/Debian bridge from any new chat.
+
 Private control plane for persistent command execution on the Morro Digital Android/Termux workstation.
 
 ## Preferred architecture — Native Termux Agent V2
