@@ -123,7 +123,7 @@ resolve_termux_cwd() {
   if [[ "$cwd" == "~" ]]; then
     printf '%s' "$HOME"
   elif [[ "$cwd" == "~/"* ]]; then
-    printf '%s/%s' "$HOME" "${cwd#~/}"
+    printf '%s/%s' "$HOME" "${cwd:2}"
   else
     printf '%s' "$cwd"
   fi
@@ -282,7 +282,7 @@ execute_issue() {
       timeout --signal=TERM --kill-after=10s "${timeout_s}s"         proot-distro login debian --         env MORRO_CMD_B64="$cmd_b64" MORRO_CWD="$cwd"         bash -lc '
           set -Eeuo pipefail
           c="$MORRO_CWD"
-          if [[ "$c" == "~" ]]; then c="$HOME"; elif [[ "$c" == "~/"* ]]; then c="$HOME/${c#~/}"; fi
+          if [[ "$c" == "~" ]]; then c="$HOME"; elif [[ "$c" == "~/"* ]]; then c="$HOME/${c:2}"; fi
           cd "$c"
           printf "%s" "$MORRO_CMD_B64" | base64 -d | bash
         ' > "$stdout_log" 2> "$stderr_log"
