@@ -145,13 +145,13 @@ publish_result() {
   body="$(cat <<EOF
 MORRO_AGENT_RESULT_V2
 
-- id: `$id`
-- target: `$target`
-- exit_code: `$exit_code`
-- started_at: `$started`
-- ended_at: `$ended`
-- duration_seconds: `$duration`
-- request_sha256: `$hash`
+- id: $id
+- target: $target
+- exit_code: $exit_code
+- started_at: $started
+- ended_at: $ended
+- duration_seconds: $duration
+- request_sha256: $hash
 
 #### stdout (last 12000 bytes)
 \`\`\`text
@@ -164,7 +164,7 @@ $err
 \`\`\`
 
 Full local logs remain on the tablet under:
-`$RESULT_DIR/$issue/`
+$RESULT_DIR/$issue/
 EOF
 )"
 
@@ -202,7 +202,7 @@ execute_issue() {
 
   if ! validate_request < "$req_file"; then
     log "REJECT issue #$issue: invalid v2 request schema"
-    gh issue comment "$issue" --repo "$REPO"       --body "MORRO_AGENT_REJECTED_V2: invalid request schema or missing `confirm: EXECUTE`." >/dev/null || true
+    gh issue comment "$issue" --repo "$REPO"       --body "MORRO_AGENT_REJECTED_V2: invalid request schema or missing confirm=EXECUTE." >/dev/null || true
     gh issue close "$issue" --repo "$REPO" >/dev/null || true
     return 0
   fi
@@ -221,7 +221,19 @@ execute_issue() {
     return 0
   fi
 
+  if [[ -f "$CLAIMED_DIR/$issue.json" ]]; then
+    log "RECOVERY issue #$issue was previously claimed without a completed result; refusing automatic re-execution"
+    if [[ ! -f "$CLAIMED_DIR/$issue.recovery-reported" ]]; then
+      gh issue comment "$issue" --repo "$REPO"         --body "MORRO_AGENT_RECOVERY_REQUIRED_V2 — this job was previously claimed on the tablet, but no completed result was recorded. Automatic re-execution is blocked to prevent duplicate side effects." >/dev/null || true
+      touch "$CLAIMED_DIR/$issue.recovery-reported"
+    fi
+    return 0
+  fi
+
+  jq -n     --arg issue "$issue"     --arg id "$id"     --arg request_sha256 "$request_hash"     --arg claimed_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)"     '{issue: $issue, id: $id, request_sha256: $request_sha256, claimed_at: $claimed_at}'     > "$CLAIMED_DIR/$issue.json"
+
   gh issue comment "$issue" --repo "$REPO"     --body "MORRO_AGENT_CLAIM_V2 — agent accepted issue #$issue at $(date -u +%Y-%m-%dT%H:%M:%SZ)." >/dev/null || {
+      rm -f "$CLAIMED_DIR/$issue.json"
       log "WARN unable to claim issue #$issue; skipping this cycle"
       return 0
     }
