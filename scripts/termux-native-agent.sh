@@ -7,12 +7,13 @@ POLL_SECONDS="${MORRO_AGENT_POLL_SECONDS:-30}"
 STATE_DIR="${MORRO_AGENT_STATE_DIR:-$HOME/.morro-termux-agent}"
 RESULT_DIR="$STATE_DIR/results"
 DONE_DIR="$STATE_DIR/done"
+CLAIMED_DIR="$STATE_DIR/claimed"
 LOG_DIR="$STATE_DIR/logs"
 STATUS_FILE="$STATE_DIR/status_issue"
 PID_FILE="$STATE_DIR/agent.pid"
 STOP_FILE="$STATE_DIR/stop"
 
-mkdir -p "$RESULT_DIR" "$DONE_DIR" "$LOG_DIR"
+mkdir -p "$RESULT_DIR" "$DONE_DIR" "$CLAIMED_DIR" "$LOG_DIR"
 touch "$LOG_DIR/agent.log"
 
 log() {
@@ -286,6 +287,7 @@ execute_issue() {
     }' > "$result_path"
 
   cp "$result_path" "$DONE_DIR/$issue.json"
+  rm -f "$CLAIMED_DIR/$issue.json" "$CLAIMED_DIR/$issue.recovery-reported"
   publish_result "$issue" "$result_path" "$stdout_log" "$stderr_log" || true
 }
 
