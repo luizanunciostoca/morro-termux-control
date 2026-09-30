@@ -4,6 +4,7 @@ set -Eeuo pipefail
 REPO="${MORRO_AGENT_REPO:-luizanunciostoca/morro-termux-control}"
 OWNER="${MORRO_AGENT_OWNER:-luizanunciostoca}"
 POLL_SECONDS="${MORRO_AGENT_POLL_SECONDS:-30}"
+AGENT_BUILD="native-v3"
 STATE_DIR="${MORRO_AGENT_STATE_DIR:-$HOME/.morro-termux-agent}"
 RESULT_DIR="$STATE_DIR/results"
 DONE_DIR="$STATE_DIR/done"
@@ -86,9 +87,10 @@ heartbeat() {
   host="$(hostname 2>/dev/null || echo android)"
   arch="$(uname -m)"
   body="$(cat <<EOF
-MORRO_NATIVE_AGENT_V2
+MORRO_NATIVE_AGENT_V3
 
 state: ONLINE
+build: $AGENT_BUILD
 heartbeat_utc: $now
 host: $host
 arch: $arch
@@ -339,7 +341,7 @@ case "$mode" in
     printf '%s\n' "$$" > "$PID_FILE"
     trap 'rm -f "$PID_FILE"; log "Agent stopped"; exit 0' INT TERM EXIT
     termux-wake-lock >/dev/null 2>&1 || true
-    log "MORRO_NATIVE_AGENT_V2 started repo=$REPO poll=${POLL_SECONDS}s"
+    log "MORRO_NATIVE_AGENT_V3 started build=$AGENT_BUILD repo=$REPO poll=${POLL_SECONDS}s"
     last_heartbeat=0
     while [[ ! -f "$STOP_FILE" ]]; do
       now_epoch="$(date +%s)"
