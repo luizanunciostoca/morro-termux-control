@@ -14,9 +14,14 @@ log() {
   printf '[%s] %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"
 }
 
+is_live_pid() {
+  local pid="${1:-}"
+  [[ "$pid" =~ ^[0-9]+$ ]] && kill -0 "$pid" 2>/dev/null
+}
+
 if [[ -f "$PID_FILE" ]]; then
   old_pid="$(cat "$PID_FILE" 2>/dev/null || true)"
-  if [[ -n "$old_pid" ]] && kill -0 "$old_pid" 2>/dev/null; then
+  if is_live_pid "$old_pid"; then
     log "supervisor already running pid=$old_pid"
     exit 0
   fi
@@ -26,10 +31,15 @@ rm -f "$STOP_FILE"
 printf '%s\n' "$$" > "$PID_FILE"
 
 cleanup() {
-  rm -f "$PID_FILE"
+  local recorded_pid
+  recorded_pid="$(cat "$PID_FILE" 2>/dev/null || true)"
+  if [[ "$recorded_pid" == "$$" ]]; then
+    rm -f "$PID_FILE"
+  fi
   log "supervisor stopped"
 }
-trap cleanup EXIT INT TERM
+trap 'exit 0' INT TERM
+trap cleanup EXIT
 
 termux-wake-lock >/dev/null 2>&1 || true
 
@@ -55,8 +65,9 @@ while [[ ! -f "$STOP_FILE" ]]; do
   fi
 
   cd "$REPO_DIR"
-
-  bash scripts/termux-native-agentctl.sh start ||     log "agent start/check returned non-zero"
+  if ! bash scripts/termux-native-agentctl.sh start; then
+    log "agent start/check returned non-zero; attempting recovery on next cycle"
+  fi
 
   sleep "$POLL_SECONDS"
 done
