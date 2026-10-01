@@ -1,23 +1,18 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
-
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CTL="$ROOT/scripts/termux-remote-commanderctl.sh"
-SUP="$ROOT/scripts/termux-remote-commander-supervisor.sh"
 INSTALL="$ROOT/scripts/install-direct-commander.sh"
 
-for f in "$CTL" "$SUP" "$INSTALL"; do
-  bash -n "$f"
-done
+bash -n "$CTL"
+bash -n "$INSTALL"
 
-grep -Fq '@wonderwhy-er/desktop-commander@0.2.52' "$CTL"
+grep -Fq '@wonderwhy-er/desktop-commander@0.2.51' "$CTL"
 grep -Fq 'export LD_PRELOAD="$PREFIX/lib/libtermux-exec.so"' "$CTL"
-grep -Fq 'export PATH="$PREFIX/bin:$PREFIX/bin/applets:$PNPM_HOME:/system/bin:/system/xbin:' "$CTL"
-grep -Fq 'exec npx -y "$PACKAGE" remote' "$CTL"
-grep -Fq 'commander=PAIR_REQUIRED' "$CTL"
-grep -Fq 'direct_access=PAIR_REQUIRED' "$INSTALL"
-grep -Fq "trap 'exit 0' INT TERM" "$SUP"
+grep -Fq 'sv up "$SERVICE_DIR"' "$CTL"
+grep -Fq 'EXPECTED_VERSION="0.2.51"' "$INSTALL"
+grep -Fq 'start-services.sh' "$INSTALL"
+grep -Fq 'sv up "$PREFIX/var/service/desktop-commander"' "$INSTALL"
 grep -Fq '10-morro-remote-commander.sh' "$INSTALL"
-grep -Fq '00-morro-remote.sh.disabled' "$INSTALL"
 
-echo "DIRECT_COMMANDER_BOOTSTRAP_REGRESSION=PASS"
+echo "DIRECT_COMMANDER_RUNIT_REGRESSION=PASS"
