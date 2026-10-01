@@ -309,7 +309,6 @@ Until these are proven, keep the Native Agent fallback enabled.
 - `CHATGPT-START-HERE.md` — this contract
 - `docs/DIRECT_ACCESS.md` — direct Commander runbook
 - `scripts/termux-remote-commanderctl.sh` — direct device lifecycle controller
-- `scripts/termux-remote-commander-supervisor.sh` — direct device recovery supervisor
 - `scripts/install-direct-commander.sh` — Termux:Boot installer
 - `scripts/direct-commander-bootstrap.test.sh` — direct bootstrap regression proof
 - `scripts/termux-native-agent.sh` — GitHub fallback job agent
