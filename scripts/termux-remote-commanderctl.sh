@@ -6,6 +6,7 @@ PID_FILE="$STATE_DIR/device.pid"
 LOG_FILE="$STATE_DIR/device.log"
 STOP_FILE="$STATE_DIR/stop"
 PACKAGE="${MORRO_COMMANDER_PACKAGE:-@wonderwhy-er/desktop-commander@0.2.52}"
+AUTH_FILE="${MORRO_COMMANDER_AUTH_FILE:-$HOME/.desktop-commander-device/device.json}"
 
 mkdir -p "$STATE_DIR"
 
@@ -42,6 +43,11 @@ start_device() {
   if pid="$(current_pid 2>/dev/null)"; then
     echo "commander=RUNNING pid=$pid package=$PACKAGE"
     return 0
+  fi
+
+  if [[ ! -s "$AUTH_FILE" ]]; then
+    echo "commander=PAIR_REQUIRED auth_file=$AUTH_FILE" >&2
+    return 78
   fi
 
   rm -f "$STOP_FILE" "$PID_FILE"
@@ -122,6 +128,11 @@ case "${1:-status}" in
       echo "commander=RUNNING pid=$pid package=$PACKAGE"
     else
       echo "commander=NOT_RUNNING package=$PACKAGE"
+    fi
+    if [[ -s "$AUTH_FILE" ]]; then
+      echo "paired=yes auth_file=$AUTH_FILE"
+    else
+      echo "paired=no auth_file=$AUTH_FILE"
     fi
     echo "log=$LOG_FILE"
     tail -n 30 "$LOG_FILE" 2>/dev/null || true
