@@ -1,0 +1,29 @@
+name: Native Agent Regression
+
+on:
+  pull_request:
+    paths:
+      - "scripts/termux-native-agent.sh"
+      - "scripts/termux-native-agent-heartbeat.test.sh"
+      - "CHATGPT-START-HERE.md"
+      - ".github/workflows/native-agent-regression.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "scripts/termux-native-agent.sh"
+      - "scripts/termux-native-agent-heartbeat.test.sh"
+      - "CHATGPT-START-HERE.md"
+      - ".github/workflows/native-agent-regression.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  heartbeat-singleton:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify native heartbeat singleton contract
+        run: bash scripts/termux-native-agent-heartbeat.test.sh

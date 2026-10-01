@@ -62,7 +62,8 @@ Before issuing a remote command, check the persistent heartbeat issue:
 
 - repository: `luizanunciostoca/morro-termux-control`
 - issue title: `[TERMUX-AGENT] status`
-- current canonical issue: **#4**
+- invariant: there must be **exactly one** open issue whose title is exactly `[TERMUX-AGENT] status`
+- never trust or hardcode an issue number; enumerate all exact-title open heartbeats and use the live singleton as authority
 
 Healthy state resembles:
 
@@ -71,6 +72,9 @@ MORRO_NATIVE_AGENT_V3
 
 state: ONLINE
 build: native-v3
+protocol_version: 2
+agent_instance_id: <ephemeral instance id>
+boot_id: <kernel boot id>
 heartbeat_utc: <timestamp>
 arch: aarch64
 poll_seconds: 30
@@ -224,7 +228,7 @@ Only ask for manual tablet intervention when the bridge itself is unavailable or
 If the heartbeat becomes stale:
 
 1. allow at least one 60-second supervisor cycle;
-2. re-check issue #4;
+2. re-enumerate all open issues whose title is exactly `[TERMUX-AGENT] status` and verify singleton + freshness;
 3. if still offline, the local recovery commands are:
 
 ```bash
@@ -271,6 +275,7 @@ These are historical evidence only. Always query current live state before actin
 - `scripts/termux-native-agent.sh` — native job agent
 - `scripts/termux-native-agentctl.sh` — lifecycle controller
 - `scripts/termux-native-supervisor.sh` — recovery supervisor
+- `scripts/termux-native-agent-heartbeat.test.sh` — heartbeat singleton regression proof
 - `docs/NATIVE_AGENT.md` — architecture documentation
 - `~/.termux/boot/20-morro-native-agent.sh` — tablet boot hook (local device)
 

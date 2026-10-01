@@ -5,6 +5,7 @@ REPO="${MORRO_AGENT_REPO:-luizanunciostoca/morro-termux-control}"
 OWNER="${MORRO_AGENT_OWNER:-luizanunciostoca}"
 POLL_SECONDS="${MORRO_AGENT_POLL_SECONDS:-30}"
 AGENT_BUILD="native-v3"
+PROTOCOL_VERSION="2"
 STATE_DIR="${MORRO_AGENT_STATE_DIR:-$HOME/.morro-termux-agent}"
 RESULT_DIR="$STATE_DIR/results"
 DONE_DIR="$STATE_DIR/done"
@@ -13,6 +14,7 @@ LOG_DIR="$STATE_DIR/logs"
 STATUS_FILE="$STATE_DIR/status_issue"
 PID_FILE="$STATE_DIR/agent.pid"
 STOP_FILE="$STATE_DIR/stop"
+DAEMON_LOCK_DIR="$STATE_DIR/daemon.lock"
 
 mkdir -p "$RESULT_DIR" "$DONE_DIR" "$CLAIMED_DIR" "$LOG_DIR"
 touch "$LOG_DIR/agent.log"
@@ -49,35 +51,86 @@ if [[ "$repo_owner" != "$OWNER" ]]; then
   exit 77
 fi
 
+list_status_issues() {
+  gh api --paginate "/repos/$REPO/issues?state=open&per_page=100" \
+    --jq '.[] | select(.pull_request == null) | select(.title=="[TERMUX-AGENT] status") | .number' |
+    sort -n
+}
+
 ensure_status_issue() {
-  local n
-  if [[ -f "$STATUS_FILE" ]]; then
-    n="$(cat "$STATUS_FILE" 2>/dev/null || true)"
-    if [[ "$n" =~ ^[0-9]+$ ]] && gh issue view "$n" --repo "$REPO" >/dev/null 2>&1; then
-      printf '%s' "$n"
-      return 0
-    fi
-  fi
+  local n duplicate
+  local -a issues=()
 
-  n="$(
-    gh issue list --repo "$REPO" --state open --limit 100       --json number,title       --jq '.[] | select(.title=="[TERMUX-AGENT] status") | .number' |
-      head -n 1
-  )"
+  mapfile -t issues < <(list_status_issues)
 
-  if [[ -z "$n" ]]; then
+  if (( ${#issues[@]} == 0 )); then
     n="$(
-      gh issue create --repo "$REPO"         --title "[TERMUX-AGENT] status"         --body "Initializing native Termux agent..." |
+      gh issue create --repo "$REPO" \
+        --title "[TERMUX-AGENT] status" \
+        --body "Initializing native Termux agent..." |
       sed -n 's#.*/issues/##p'
     )"
+    [[ "$n" =~ ^[0-9]+$ ]] || return 1
+
+    # Re-read after creation so concurrent starters converge on one authority.
+    mapfile -t issues < <(list_status_issues)
   fi
 
-  [[ "$n" =~ ^[0-9]+$ ]] || return 1
+  (( ${#issues[@]} >= 1 )) || return 1
+  n="${issues[0]}"
+
+  for duplicate in "${issues[@]:1}"; do
+    gh issue comment "$duplicate" --repo "$REPO" \
+      --body "MORRO_AGENT_HEARTBEAT_SUPERSEDED_V3 — canonical heartbeat is #$n. Duplicate closed by deterministic singleton reconciliation." \
+      >/dev/null 2>&1 || true
+    gh issue close "$duplicate" --repo "$REPO" >/dev/null 2>&1 || true
+  done
+
   printf '%s\n' "$n" > "$STATUS_FILE"
   printf '%s' "$n"
 }
 
+boot_id() {
+  local value
+  value="$(cat /proc/sys/kernel/random/boot_id 2>/dev/null || true)"
+  [[ -n "$value" ]] && printf '%s' "$value" || printf '%s' "unknown"
+}
+
+agent_instance_id() {
+  printf '%s' "$(boot_id)|$|$(date -u +%Y-%m-%dT%H:%M:%S.%NZ)" |
+    sha256sum |
+    awk '{print substr($1,1,24)}'
+}
+
+acquire_daemon_lock() {
+  local old_pid
+  if mkdir "$DAEMON_LOCK_DIR" 2>/dev/null; then
+    printf '%s\n' "$" > "$DAEMON_LOCK_DIR/pid"
+    return 0
+  fi
+
+  old_pid="$(cat "$DAEMON_LOCK_DIR/pid" 2>/dev/null || true)"
+  if [[ "$old_pid" =~ ^[0-9]+$ ]] && kill -0 "$old_pid" 2>/dev/null; then
+    log "ERROR agent singleton already running pid=$old_pid"
+    exit 73
+  fi
+
+  rm -f "$DAEMON_LOCK_DIR/pid"
+  rmdir "$DAEMON_LOCK_DIR" 2>/dev/null || {
+    log "ERROR unable to recover stale daemon lock"
+    exit 73
+  }
+  mkdir "$DAEMON_LOCK_DIR"
+  printf '%s\n' "$" > "$DAEMON_LOCK_DIR/pid"
+}
+
+release_daemon_lock() {
+  rm -f "$DAEMON_LOCK_DIR/pid"
+  rmdir "$DAEMON_LOCK_DIR" 2>/dev/null || true
+}
+
 heartbeat() {
-  local status_issue now host arch body
+  local status_issue now host arch body boot instance
   status_issue="$(ensure_status_issue)" || {
     log "WARN unable to resolve status issue"
     return 0
@@ -86,15 +139,20 @@ heartbeat() {
   now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   host="$(hostname 2>/dev/null || echo android)"
   arch="$(uname -m)"
+  boot="$(boot_id)"
+  instance="$(agent_instance_id)"
   body="$(cat <<EOF
 MORRO_NATIVE_AGENT_V3
 
 state: ONLINE
 build: $AGENT_BUILD
+protocol_version: $PROTOCOL_VERSION
+agent_instance_id: $instance
+boot_id: $boot
 heartbeat_utc: $now
 host: $host
 arch: $arch
-pid: $$
+pid: $
 poll_seconds: $POLL_SECONDS
 repo: $REPO
 transport: GitHub Issues
@@ -337,9 +395,15 @@ case "$mode" in
     run_once
     ;;
   daemon)
+    acquire_daemon_lock
     rm -f "$STOP_FILE"
-    printf '%s\n' "$$" > "$PID_FILE"
-    trap 'rm -f "$PID_FILE"; log "Agent stopped"; exit 0' INT TERM EXIT
+    printf '%s\n' "$" > "$PID_FILE"
+    cleanup_agent() {
+      rm -f "$PID_FILE"
+      release_daemon_lock
+      log "Agent stopped"
+    }
+    trap 'cleanup_agent' INT TERM EXIT
     termux-wake-lock >/dev/null 2>&1 || true
     log "MORRO_NATIVE_AGENT_V3 started build=$AGENT_BUILD repo=$REPO poll=${POLL_SECONDS}s"
     last_heartbeat=0
