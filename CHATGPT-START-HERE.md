@@ -245,6 +245,27 @@ Do **not** say "Termux has no access" merely because a ChatGPT-side connector/to
 - `GITHUB_CONNECTOR_UNAVAILABLE`
 - `TABLET_UNREACHABLE_BOTH_TRANSPORTS`
 
+## 9A. Touristic Digital Platform checkout discipline
+
+For `luizanunciostoca/touristic-digital-platform`, never treat the long-lived checkout at `$HOME/touristic-digital-platform` as current authority or as a shared writable workspace.
+
+Use the bare store at `$HOME/repos/touristic-digital-platform.git` and disposable worktrees under `$HOME/worktrees`.
+
+Before creating a writer worktree, the Control Plane must have selected a READY task and granted its claim/lease. Read-only discovery must not create a branch.
+
+Use:
+
+```bash
+cd "$HOME/morro-termux-control"
+scripts/tdp-worktreectl.sh bootstrap
+scripts/tdp-worktreectl.sh refresh
+scripts/tdp-worktreectl.sh create <task-id> <lease-id> refs/heads/main <exact-main-sha>
+```
+
+Never reuse a worktree for another writer or lease. Retire clean worktrees after completion. Dirty worktrees are quarantined and preserved for forensic recovery instead of being silently deleted.
+
+See `docs/PLATFORM_WORKTREES.md` for the full lifecycle.
+
 ## 10. Recovery
 
 ### Direct Commander offline
@@ -322,7 +343,10 @@ Historical post-reboot fallback proof: issue #569. Treat that issue only as evid
 - `scripts/termux-native-agentctl.sh` — fallback lifecycle controller
 - `scripts/termux-native-supervisor.sh` — fallback recovery supervisor
 - `scripts/termux-native-agent-heartbeat.test.sh` — fallback lifecycle/singleton regression proof
+- `scripts/tdp-worktreectl.sh` — exact-SHA bare-store/disposable-worktree controller
+- `scripts/tdp-worktreectl.test.sh` — worktree lifecycle regression proof
 - `docs/NATIVE_AGENT.md` — fallback architecture documentation
+- `docs/PLATFORM_WORKTREES.md` — Touristic Digital Platform checkout/worktree runbook
 - `~/.termux/boot/10-morro-remote-commander.sh` — direct tablet boot hook after installation
 - `~/.termux/boot/20-morro-native-agent.sh` — fallback tablet boot hook
 
