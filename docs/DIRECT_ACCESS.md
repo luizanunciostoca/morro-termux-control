@@ -99,4 +99,36 @@ Passed:
 - automatic reconnect after service restart;
 - direct shell works after reconnect.
 
-Remaining final persistence proof: Android reboot followed by automatic reconnect.
+Final persistence proof passed on 2026-10-01:
+
+- Android reboot completed;
+- Remote Desktop Commander returned online automatically;
+- post-reboot `ping` succeeded;
+- post-reboot direct Termux shell returned `POST_REBOOT_DIRECT_OK`;
+- post-reboot filesystem create/read/delete passed;
+- post-reboot Debian/PRoot returned `POST_REBOOT_DEBIAN_OK`;
+- Native Agent heartbeat returned with a new boot ID and fresh instance;
+- Native Agent issue #569 executed after reboot with `exit_code: 0` and returned `POST_REBOOT_FALLBACK_OK`.
+
+The direct access architecture is therefore accepted for normal operation. Keep Native Agent V3 enabled as the fallback channel.
+
+
+## Post-reboot ADB note
+
+After an Android reboot, the local ADB server may not be running and the Wireless Debugging TCP endpoint may have changed. This does not affect the direct Commander transport or Native Agent fallback.
+
+When starting the Termux ADB client, use the Termux temp directory if needed:
+
+```bash
+export TMPDIR="$PREFIX/tmp"
+adb start-server
+```
+
+Then connect using the **current** endpoint shown under Android Developer Options > Wireless debugging:
+
+```bash
+adb connect <current-ip:port>
+adb devices -l
+```
+
+Do not treat a disconnected ADB client as loss of Termux remote access.
