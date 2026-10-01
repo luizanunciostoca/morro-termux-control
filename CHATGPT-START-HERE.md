@@ -27,10 +27,12 @@ The persistent local pieces are:
 
 ```text
 ~/.termux/boot/10-morro-remote-commander.sh
-  -> scripts/termux-remote-commander-supervisor.sh
-  -> scripts/termux-remote-commanderctl.sh
-  -> @wonderwhy-er/desktop-commander remote
+  -> termux-services / runit
+  -> service: desktop-commander
+  -> Desktop Commander 0.2.51 + libtermux-exec
 ```
+
+This tablet uses Termux Google Play `googleplay.2026.06.21`; boot-hook support is integrated into the main Termux app, so no separate `com.termux.boot` package is required.
 
 ### Fallback — Native Termux Agent V3 over GitHub Issues
 
@@ -48,7 +50,7 @@ The fallback starts automatically after Android reboot:
 
 ```text
 Android boot
-  -> Termux:Boot
+  -> integrated Termux boot hooks
   -> ~/.termux/boot/20-morro-native-agent.sh
   -> scripts/termux-native-supervisor.sh
   -> scripts/termux-native-agent.sh daemon
@@ -68,7 +70,7 @@ For ordinary shell/filesystem/process work:
 
 Do not route ordinary direct work through GitHub when Commander is healthy.
 
-Do not disable or remove the GitHub fallback until the direct path has passed the acceptance tests in this document.
+The direct path has passed the full acceptance tests including Android reboot. Keep the GitHub Native Agent enabled as an independent fallback and recovery channel.
 
 ## 3. Direct Commander health and operation
 
@@ -291,18 +293,23 @@ Validated flows include:
 
 Historical proof issues include #15, #23, #25, #26 and #27. They are historical evidence only.
 
-### Direct Commander — acceptance required after bootstrap
+### Direct Commander — accepted
 
-The direct path becomes the preferred operational transport only after all of these pass:
+The direct path is fully accepted as the preferred operational transport.
+
+Validated on 2026-10-01:
 
 1. tablet appears online in Remote Desktop Commander;
 2. ChatGPT `ping` succeeds;
-3. ChatGPT executes a read-only shell probe;
-4. ChatGPT creates and deletes a temporary file under the Termux home;
-5. a controlled Remote Device restart reconnects without re-pairing;
-6. Android reboot reconnects without manual command entry.
+3. direct Termux shell execution succeeds;
+4. direct filesystem create/read/delete succeeds;
+5. Debian/PRoot execution succeeds;
+6. controlled runit service restart reconnects without re-pairing;
+7. Android reboot reconnects without manual command entry;
+8. post-reboot direct shell execution succeeds;
+9. Native Agent fallback also recovers after the same reboot and executes a real job successfully.
 
-Until these are proven, keep the Native Agent fallback enabled.
+Historical post-reboot fallback proof: issue #569. Treat that issue only as evidence; always check current live state before acting.
 
 ## 12. Canonical files
 
