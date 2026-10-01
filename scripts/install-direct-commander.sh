@@ -8,6 +8,7 @@ LEGACY="$BOOT_DIR/00-morro-remote.sh"
 LEGACY_DISABLED="$BOOT_DIR/00-morro-remote.sh.disabled"
 STATE_DIR="${MORRO_COMMANDER_STATE_DIR:-$HOME/.morro-remote-commander}"
 SUP_PID_FILE="$STATE_DIR/supervisor.pid"
+AUTH_FILE="${MORRO_COMMANDER_AUTH_FILE:-$HOME/.desktop-commander-device/device.json}"
 
 mkdir -p "$BOOT_DIR" "$STATE_DIR"
 
@@ -37,6 +38,14 @@ chmod 700 "$BOOT_HOOK"
 chmod 700 "$REPO_DIR/scripts/termux-remote-commanderctl.sh"
 chmod 700 "$REPO_DIR/scripts/termux-remote-commander-supervisor.sh"
 
+if [[ ! -s "$AUTH_FILE" ]]; then
+  echo "direct_access=PAIR_REQUIRED"
+  echo "boot_hook=$BOOT_HOOK"
+  echo "auth_file=$AUTH_FILE"
+  echo "next=bash $REPO_DIR/scripts/termux-remote-commanderctl.sh pair"
+  exit 0
+fi
+
 if [[ -f "$SUP_PID_FILE" ]]; then
   pid="$(cat "$SUP_PID_FILE" 2>/dev/null || true)"
   if [[ "$pid" =~ ^[0-9]+$ ]] && kill -0 "$pid" 2>/dev/null; then
@@ -50,6 +59,6 @@ nohup bash "$REPO_DIR/scripts/termux-remote-commander-supervisor.sh" \
   >>"$STATE_DIR/boot.log" 2>&1 &
 
 sleep 1
-echo "direct_access=INSTALLED"
+echo "direct_access=INSTALLED_AND_ACTIVATED"
 echo "boot_hook=$BOOT_HOOK"
-echo "next=bash $REPO_DIR/scripts/termux-remote-commanderctl.sh pair"
+echo "auth_file=$AUTH_FILE"
