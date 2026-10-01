@@ -4,6 +4,7 @@ set -Eeuo pipefail
 REPO="${MORRO_AGENT_REPO:-luizanunciostoca/morro-termux-control}"
 OWNER="${MORRO_AGENT_OWNER:-luizanunciostoca}"
 POLL_SECONDS="${MORRO_AGENT_POLL_SECONDS:-30}"
+HEARTBEAT_SECONDS="${MORRO_AGENT_HEARTBEAT_SECONDS:-120}"
 AGENT_BUILD="native-v3"
 PROTOCOL_VERSION="2"
 STATE_DIR="${MORRO_AGENT_STATE_DIR:-$HOME/.morro-termux-agent}"
@@ -58,22 +59,37 @@ list_status_issues() {
 }
 
 ensure_status_issue() {
-  local n duplicate
+  local n duplicate status_output
   local -a issues=()
 
-  mapfile -t issues < <(list_status_issues)
+  if ! status_output="$(list_status_issues)"; then
+    log "WARN heartbeat discovery failed; refusing to infer an empty heartbeat set"
+    return 1
+  fi
+  if [[ -n "$status_output" ]]; then
+    mapfile -t issues <<<"$status_output"
+  fi
 
   if (( ${#issues[@]} == 0 )); then
-    n="$(
+    if ! n="$(
       gh issue create --repo "$REPO" \
         --title "[TERMUX-AGENT] status" \
         --body "Initializing native Termux agent..." |
       sed -n 's#.*/issues/##p'
-    )"
+    )"; then
+      log "WARN heartbeat creation failed"
+      return 1
+    fi
     [[ "$n" =~ ^[0-9]+$ ]] || return 1
 
-    # Re-read after creation so concurrent starters converge on one authority.
-    mapfile -t issues < <(list_status_issues)
+    issues=()
+    if ! status_output="$(list_status_issues)"; then
+      log "WARN heartbeat reconciliation failed after creation"
+      return 1
+    fi
+    if [[ -n "$status_output" ]]; then
+      mapfile -t issues <<<"$status_output"
+    fi
   fi
 
   (( ${#issues[@]} >= 1 )) || return 1
@@ -97,7 +113,8 @@ boot_id() {
 }
 
 agent_instance_id() {
-  printf '%s' "$(boot_id)|$|$(date -u +%Y-%m-%dT%H:%M:%S.%NZ)" |
+  # Stable for the lifetime of this daemon; changes across process or device boot.
+  printf '%s' "$(boot_id)|$$" |
     sha256sum |
     awk '{print substr($1,1,24)}'
 }
@@ -105,7 +122,7 @@ agent_instance_id() {
 acquire_daemon_lock() {
   local old_pid
   if mkdir "$DAEMON_LOCK_DIR" 2>/dev/null; then
-    printf '%s\n' "$" > "$DAEMON_LOCK_DIR/pid"
+    printf '%s\n' "$$" > "$DAEMON_LOCK_DIR/pid"
     return 0
   fi
 
@@ -120,13 +137,20 @@ acquire_daemon_lock() {
     log "ERROR unable to recover stale daemon lock"
     exit 73
   }
-  mkdir "$DAEMON_LOCK_DIR"
-  printf '%s\n' "$" > "$DAEMON_LOCK_DIR/pid"
+  if ! mkdir "$DAEMON_LOCK_DIR" 2>/dev/null; then
+    log "ERROR daemon lock was concurrently acquired"
+    exit 73
+  fi
+  printf '%s\n' "$$" > "$DAEMON_LOCK_DIR/pid"
 }
 
 release_daemon_lock() {
-  rm -f "$DAEMON_LOCK_DIR/pid"
-  rmdir "$DAEMON_LOCK_DIR" 2>/dev/null || true
+  local lock_pid
+  lock_pid="$(cat "$DAEMON_LOCK_DIR/pid" 2>/dev/null || true)"
+  if [[ "$lock_pid" == "$$" ]]; then
+    rm -f "$DAEMON_LOCK_DIR/pid"
+    rmdir "$DAEMON_LOCK_DIR" 2>/dev/null || true
+  fi
 }
 
 heartbeat() {
@@ -152,7 +176,7 @@ boot_id: $boot
 heartbeat_utc: $now
 host: $host
 arch: $arch
-pid: $
+pid: $$
 poll_seconds: $POLL_SECONDS
 repo: $REPO
 transport: GitHub Issues
@@ -369,10 +393,19 @@ execute_issue() {
 }
 
 run_once() {
-  local rows
-  rows="$(
-    gh issue list --repo "$REPO" --state open --limit 100       --json number,title,body,author       --jq '.[] | select(.title | startswith("[TERMUX-JOB] ")) | @base64'
-  )"
+  local rows row obj issue title body author
+
+  if ! rows="$(
+    gh api --paginate "/repos/$REPO/issues?state=open&per_page=100" \
+      --jq '.[] |
+        select(.pull_request == null) |
+        select(.title | startswith("[TERMUX-JOB] ")) |
+        {number: .number, title: .title, body: (.body // ""), author: {login: (.user.login // "")}} |
+        @base64'
+  )"; then
+    log "WARN unable to enumerate open Termux jobs"
+    return 1
+  fi
 
   [[ -n "$rows" ]] || return 0
 
@@ -397,19 +430,24 @@ case "$mode" in
   daemon)
     acquire_daemon_lock
     rm -f "$STOP_FILE"
-    printf '%s\n' "$" > "$PID_FILE"
+    printf '%s\n' "$$" > "$PID_FILE"
     cleanup_agent() {
-      rm -f "$PID_FILE"
+      local recorded_pid
+      recorded_pid="$(cat "$PID_FILE" 2>/dev/null || true)"
+      if [[ "$recorded_pid" == "$$" ]]; then
+        rm -f "$PID_FILE"
+      fi
       release_daemon_lock
       log "Agent stopped"
     }
-    trap 'cleanup_agent' INT TERM EXIT
+    trap 'exit 0' INT TERM
+    trap 'cleanup_agent' EXIT
     termux-wake-lock >/dev/null 2>&1 || true
     log "MORRO_NATIVE_AGENT_V3 started build=$AGENT_BUILD repo=$REPO poll=${POLL_SECONDS}s"
     last_heartbeat=0
     while [[ ! -f "$STOP_FILE" ]]; do
       now_epoch="$(date +%s)"
-      if (( now_epoch - last_heartbeat >= 120 )); then
+      if (( now_epoch - last_heartbeat >= HEARTBEAT_SECONDS )); then
         heartbeat
         last_heartbeat="$now_epoch"
       fi
