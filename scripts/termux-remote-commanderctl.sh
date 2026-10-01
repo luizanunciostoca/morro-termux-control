@@ -5,6 +5,15 @@ STATE_DIR="${MORRO_COMMANDER_STATE_DIR:-$HOME/.morro-remote-commander}"
 PID_FILE="$STATE_DIR/device.pid"
 LOG_FILE="$STATE_DIR/device.log"
 STOP_FILE="$STATE_DIR/stop"
+PREFIX="${PREFIX:-/data/data/com.termux/files/usr}"
+export PREFIX
+export HOME="${HOME:-/data/data/com.termux/files/home}"
+export SHELL="${SHELL:-$PREFIX/bin/bash}"
+export TMPDIR="${TMPDIR:-$PREFIX/tmp}"
+export PNPM_HOME="${PNPM_HOME:-$HOME/.local/share/pnpm}"
+export PATH="$PREFIX/bin:$PREFIX/bin/applets:$PNPM_HOME:/system/bin:/system/xbin:${PATH:-}"
+export LD_PRELOAD="$PREFIX/lib/libtermux-exec.so"
+
 PACKAGE="${MORRO_COMMANDER_PACKAGE:-@wonderwhy-er/desktop-commander@0.2.52}"
 AUTH_FILE="${MORRO_COMMANDER_AUTH_FILE:-$HOME/.desktop-commander-device/device.json}"
 

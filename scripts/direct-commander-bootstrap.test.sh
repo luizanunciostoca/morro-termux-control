@@ -11,6 +11,8 @@ for f in "$CTL" "$SUP" "$INSTALL"; do
 done
 
 grep -Fq '@wonderwhy-er/desktop-commander@0.2.52' "$CTL"
+grep -Fq 'export LD_PRELOAD="$PREFIX/lib/libtermux-exec.so"' "$CTL"
+grep -Fq 'export PATH="$PREFIX/bin:$PREFIX/bin/applets:$PNPM_HOME:/system/bin:/system/xbin:' "$CTL"
 grep -Fq 'exec npx -y "$PACKAGE" remote' "$CTL"
 grep -Fq 'commander=PAIR_REQUIRED' "$CTL"
 grep -Fq 'direct_access=PAIR_REQUIRED' "$INSTALL"

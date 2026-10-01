@@ -104,3 +104,27 @@ The direct path is accepted only after all of the following are observed:
 6. The device agent reconnects after Android reboot.
 
 Until those checks pass, do not retire the GitHub Native Agent fallback.
+
+
+## Android Wireless Debugging / ADB layer
+
+When Android **Wireless debugging** is enabled and the tablet has already been paired with the local Termux ADB client, the direct Commander path can invoke `adb shell` for Android-shell operations that are not available to the ordinary Termux app UID.
+
+Observed/validated on the current tablet:
+
+```text
+device model: SM-X820
+Android: 16
+Termux ADB client: installed
+ADB shell identity: uid=2000(shell)
+```
+
+The Wi-Fi debugging host/port is session-specific and may change after toggling Wireless debugging, changing networks, or rebooting. Never hardcode the current endpoint in source control. Use the endpoint displayed by Android at runtime, then verify with:
+
+```bash
+adb connect <ip:port>
+adb devices -l
+adb shell id
+```
+
+This ADB layer increases Android administration capability but is not Android root.
