@@ -1,45 +1,32 @@
 # Direct tablet access — Remote Desktop Commander
 
-## Goal
+## Canonical direct transport
 
-Provide ChatGPT a direct, non-GitHub execution path to the Android/Termux tablet.
-
-Runtime path:
+Validated path on the current tablet:
 
 ```text
 ChatGPT
   -> Remote Desktop Commander MCP
-  -> paired device agent
+  -> paired Remote Device
+  -> termux-services / runit: desktop-commander
   -> Termux shell / filesystem / processes
 ```
 
-GitHub Issues are not in this execution path. The Native Termux Agent V3 remains available as a fallback until the direct path is accepted.
+No GitHub Issue is used for commands on this path. Native Agent V3 remains the fallback.
 
-## Current package
-
-The bootstrap defaults to:
+## Validated runtime
 
 ```text
-@wonderwhy-er/desktop-commander@0.2.52
+Tablet: Samsung SM-X820
+Android: 16
+Termux: Google Play googleplay.2026.06.21
+Desktop Commander: 0.2.51
+Supervisor: termux-services / runit
 ```
 
-Override intentionally with:
+Version 0.2.51 is intentionally pinned on this tablet because direct `start_process` was proven after restart. A parallel 0.2.52 launcher was observed to fail process spawning in this Termux environment and must not run alongside the canonical service.
 
-```bash
-export MORRO_COMMANDER_PACKAGE='@wonderwhy-er/desktop-commander@<version>'
-```
-
-The authenticated device session is expected at:
-
-```text
-~/.desktop-commander-device/device.json
-```
-
-That credential file stays local to the tablet.
-
-## One-time bootstrap
-
-From Termux:
+## Installation / repair
 
 ```bash
 cd "$HOME/morro-termux-control"
@@ -49,82 +36,67 @@ git merge --ff-only origin/main
 bash scripts/install-direct-commander.sh
 ```
 
-If an existing saved device session is present, the installer starts the supervisor automatically.
-
-If the installer reports `direct_access=PAIR_REQUIRED`, run:
-
-```bash
-bash scripts/termux-remote-commanderctl.sh pair
-```
-
-The pairing command is interactive. Keep it open until the CLI reports `Device ready`. Complete the browser/device-flow authorization if requested.
-
-After `Device ready`, press `Ctrl+C` once to stop the foreground pairing process. The saved session remains on disk. Then activate persistent mode by running the installer again:
-
-```bash
-bash scripts/install-direct-commander.sh
-bash scripts/termux-remote-commanderctl.sh status
-```
-
-Do not run a background Remote Device before pairing; the controller intentionally refuses background startup when the saved session is missing.
+Pair only if the installer reports `PAIR_REQUIRED`.
 
 ## Boot persistence
 
-`scripts/install-direct-commander.sh` installs:
+This tablet uses the Google Play Termux build. In that distribution, the former Termux:Boot functionality is integrated into the main Termux app; a separate `com.termux.boot` application is not required.
+
+Canonical hook:
 
 ```text
 ~/.termux/boot/10-morro-remote-commander.sh
 ```
 
-That boot hook starts:
+It starts termux-services and enables the runit `desktop-commander` service. Runit provides process supervision.
+
+## Android Wireless Debugging / ADB
+
+Wireless debugging is enabled and the local Termux ADB client is already paired.
+
+Validated:
 
 ```text
-scripts/termux-remote-commander-supervisor.sh
-```
-
-The supervisor checks the remote device process every 60 seconds and restarts it when needed.
-
-## Operations
-
-```bash
-bash scripts/termux-remote-commanderctl.sh status
-bash scripts/termux-remote-commanderctl.sh restart
-bash scripts/termux-remote-commanderctl.sh logs
-```
-
-## Acceptance
-
-The direct path is accepted only after all of the following are observed:
-
-1. Remote Desktop Commander reports the tablet online.
-2. ChatGPT can ping the tablet.
-3. ChatGPT can run a read-only shell probe.
-4. ChatGPT can create and delete a temporary file under the Termux home directory.
-5. The device agent reconnects after a controlled restart.
-6. The device agent reconnects after Android reboot.
-
-Until those checks pass, do not retire the GitHub Native Agent fallback.
-
-
-## Android Wireless Debugging / ADB layer
-
-When Android **Wireless debugging** is enabled and the tablet has already been paired with the local Termux ADB client, the direct Commander path can invoke `adb shell` for Android-shell operations that are not available to the ordinary Termux app UID.
-
-Observed/validated on the current tablet:
-
-```text
-device model: SM-X820
+adb: installed
+device: SM-X820
 Android: 16
-Termux ADB client: installed
-ADB shell identity: uid=2000(shell)
+adb shell: uid=2000(shell)
 ```
 
-The Wi-Fi debugging host/port is session-specific and may change after toggling Wireless debugging, changing networks, or rebooting. Never hardcode the current endpoint in source control. Use the endpoint displayed by Android at runtime, then verify with:
+The displayed Wi-Fi debugging endpoint is ephemeral. Never hardcode it in source control.
 
 ```bash
-adb connect <ip:port>
+adb connect <current-ip:port>
 adb devices -l
 adb shell id
 ```
 
-This ADB layer increases Android administration capability but is not Android root.
+ADB provides Android shell authority, not kernel root.
+
+## Background persistence
+
+Applied through ADB to `com.termux`:
+
+```text
+device-idle whitelist: enabled
+RUN_IN_BACKGROUND: allow
+RUN_ANY_IN_BACKGROUND: allow
+```
+
+No separate `com.termux.boot` package exists in this Google Play installation.
+
+## Acceptance
+
+Passed:
+
+- direct device online;
+- ping;
+- direct Termux shell;
+- direct filesystem create/read/delete;
+- Debian/PRoot command;
+- wireless ADB + Android shell;
+- controlled runit service restart;
+- automatic reconnect after service restart;
+- direct shell works after reconnect.
+
+Remaining final persistence proof: Android reboot followed by automatic reconnect.
