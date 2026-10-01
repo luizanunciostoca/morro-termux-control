@@ -1,0 +1,33 @@
+name: Direct Commander Regression
+
+on:
+  pull_request:
+    paths:
+      - "scripts/termux-remote-commanderctl.sh"
+      - "scripts/termux-remote-commander-supervisor.sh"
+      - "scripts/install-direct-commander.sh"
+      - "scripts/direct-commander-bootstrap.test.sh"
+      - "docs/DIRECT_ACCESS.md"
+      - ".github/workflows/direct-commander-regression.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "scripts/termux-remote-commanderctl.sh"
+      - "scripts/termux-remote-commander-supervisor.sh"
+      - "scripts/install-direct-commander.sh"
+      - "scripts/direct-commander-bootstrap.test.sh"
+      - "docs/DIRECT_ACCESS.md"
+      - ".github/workflows/direct-commander-regression.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify direct Commander bootstrap contract
+        run: bash scripts/direct-commander-bootstrap.test.sh
