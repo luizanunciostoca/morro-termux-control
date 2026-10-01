@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "id": "recover-native-agent-20261001-0705",
+  "description": "One-time recovery: update native agent singleton fix and restart Native Agent V3",
+  "cwd": "~",
+  "timeout_seconds": 120,
+  "command": "set -Eeuo pipefail\\ncd \"$HOME/morro-termux-control\"\\ngit fetch origin main\\ngit checkout main\\ngit merge --ff-only origin/main\\nbash scripts/termux-native-agentctl.sh restart\\nsleep 3\\nbash scripts/termux-native-agentctl.sh status"
+}
