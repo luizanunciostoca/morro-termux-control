@@ -1,0 +1,29 @@
+name: Project Status Regression
+
+on:
+  pull_request:
+    paths:
+      - "scripts/morro-project-status.sh"
+      - "scripts/morro-project-status.test.sh"
+      - "CHATGPT-START-HERE.md"
+      - ".github/workflows/project-status-regression.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "scripts/morro-project-status.sh"
+      - "scripts/morro-project-status.test.sh"
+      - "CHATGPT-START-HERE.md"
+      - ".github/workflows/project-status-regression.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  project-status-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify project status snapshot contract
+        run: bash scripts/morro-project-status.test.sh
