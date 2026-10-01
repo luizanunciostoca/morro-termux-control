@@ -29,6 +29,14 @@ Override intentionally with:
 export MORRO_COMMANDER_PACKAGE='@wonderwhy-er/desktop-commander@<version>'
 ```
 
+The authenticated device session is expected at:
+
+```text
+~/.desktop-commander-device/device.json
+```
+
+That credential file stays local to the tablet.
+
 ## One-time bootstrap
 
 From Termux:
@@ -39,17 +47,26 @@ git fetch origin main
 git switch main
 git merge --ff-only origin/main
 bash scripts/install-direct-commander.sh
+```
+
+If an existing saved device session is present, the installer starts the supervisor automatically.
+
+If the installer reports `direct_access=PAIR_REQUIRED`, run:
+
+```bash
 bash scripts/termux-remote-commanderctl.sh pair
 ```
 
-The pairing command is interactive. Keep it open until the CLI reports that the device is ready. Complete any browser/device-flow authorization that it requests.
+The pairing command is interactive. Keep it open until the CLI reports `Device ready`. Complete the browser/device-flow authorization if requested.
 
-After pairing, stop the foreground process with Ctrl+C if needed, then run:
+After `Device ready`, press `Ctrl+C` once to stop the foreground pairing process. The saved session remains on disk. Then activate persistent mode by running the installer again:
 
 ```bash
-bash scripts/termux-remote-commanderctl.sh restart
+bash scripts/install-direct-commander.sh
 bash scripts/termux-remote-commanderctl.sh status
 ```
+
+Do not run a background Remote Device before pairing; the controller intentionally refuses background startup when the saved session is missing.
 
 ## Boot persistence
 
@@ -65,7 +82,7 @@ That boot hook starts:
 scripts/termux-remote-commander-supervisor.sh
 ```
 
-The supervisor checks the remote device process every 60 seconds and restarts it if needed.
+The supervisor checks the remote device process every 60 seconds and restarts it when needed.
 
 ## Operations
 
@@ -77,7 +94,7 @@ bash scripts/termux-remote-commanderctl.sh logs
 
 ## Acceptance
 
-The direct path is considered accepted only after all of the following are observed:
+The direct path is accepted only after all of the following are observed:
 
 1. Remote Desktop Commander reports the tablet online.
 2. ChatGPT can ping the tablet.
