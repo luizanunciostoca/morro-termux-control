@@ -58,6 +58,24 @@ Android boot
 
 Never conclude that the tablet is inaccessible merely because one transport is unavailable.
 
+## 1.1 Mandatory live project snapshot
+
+Before project work that can depend on repository state, run:
+
+```bash
+scripts/morro-project-status.sh --json
+```
+
+Use its GitHub LIVE main SHAs and open PR heads as authority for:
+
+- `touristic-digital-platform`;
+- `morro-integration-lab`;
+- `morro-termux-control`.
+
+Local long-lived checkouts are never authority. The snapshot reports when a local checkout, cached `origin/main`, or bare-store `main` is stale without mutating or fetching any repository.
+
+Use `--full` only when remote branch counts are materially needed.
+
 ## 2. Transport selection
 
 For ordinary shell/filesystem/process work:
