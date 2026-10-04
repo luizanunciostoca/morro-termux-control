@@ -7,6 +7,9 @@ on:
       - "scripts/termux-native-agentctl.sh"
       - "scripts/termux-native-supervisor.sh"
       - "scripts/termux-native-agent-heartbeat.test.sh"
+      - "scripts/termux-job-protocol.sh"
+      - "scripts/termux-job-protocol.test.sh"
+      - ".github/workflows/native-agent-job-preflight.yml"
       - "CHATGPT-START-HERE.md"
       - ".github/workflows/native-agent-regression.yml"
   push:
@@ -17,6 +20,9 @@ on:
       - "scripts/termux-native-agentctl.sh"
       - "scripts/termux-native-supervisor.sh"
       - "scripts/termux-native-agent-heartbeat.test.sh"
+      - "scripts/termux-job-protocol.sh"
+      - "scripts/termux-job-protocol.test.sh"
+      - ".github/workflows/native-agent-job-preflight.yml"
       - "CHATGPT-START-HERE.md"
       - ".github/workflows/native-agent-regression.yml"
 
@@ -28,6 +34,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Verify request serialization, attestation binding, and edit invalidation
+        run: bash scripts/termux-job-protocol.test.sh
       - name: Verify native agent lifecycle, singleton, and discovery
         run: bash scripts/termux-native-agent-heartbeat.test.sh
