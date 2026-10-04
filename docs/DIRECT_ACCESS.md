@@ -26,6 +26,12 @@ Supervisor: termux-services / runit
 
 Version 0.2.51 is intentionally pinned on this tablet because direct `start_process` was proven after restart. A parallel 0.2.52 launcher was observed to fail process spawning in this Termux environment and must not run alongside the canonical service.
 
+## Automatic config-corruption recovery
+
+The runit entrypoint validates ~/.claude-server-commander/config.json before every Remote Desktop Commander process start. If the file is invalid JSON, it is moved aside atomically as config.json.corrupt-<UTC>-<pid> and the upstream server is allowed to regenerate a clean configuration. The paired device session in ~/.desktop-commander-device/device.json is not modified.
+
+This prevents an invalid or NUL-filled config from causing an infinite runit restart loop where the device is repeatedly marked offline.
+
 ## Installation / repair
 
 ```bash
