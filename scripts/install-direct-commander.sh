@@ -33,7 +33,7 @@ if [[ "$ACTUAL_VERSION" != "$EXPECTED_VERSION" ]]; then
   exit 78
 fi
 
-if [[ ! -x "$CONFIG_GUARD_SOURCE" ]]; then
+if [[ ! -f "$CONFIG_GUARD_SOURCE" ]]; then
   echo "direct_access=BLOCKED reason=CONFIG_GUARD_SOURCE_MISSING path=$CONFIG_GUARD_SOURCE" >&2
   exit 69
 fi
