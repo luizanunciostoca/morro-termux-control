@@ -157,6 +157,11 @@ Body must be raw JSON:
 
 Rules:
 
+- serialize the complete request with a real JSON serializer; never manually interpolate or nest quoted command text into JSON;
+- the GitHub preflight workflow validates the exact current issue body, canonicalizes it with sorted JSON keys, computes its SHA-256, and posts a `MORRO_JOB_PREFLIGHT_V3` attestation as `github-actions[bot]`;
+- the Native Agent will not claim or execute the job until that attestation matches the canonical hash of the current body;
+- editing the issue body invalidates any older attestation automatically because its hash no longer matches;
+- invalid JSON/schema is closed fail-closed by preflight and is never executable;
 - `version`: `2`
 - `confirm`: exactly `EXECUTE`
 - `id`: letters, numbers, dot, underscore or hyphen
@@ -189,6 +194,8 @@ Inspect at minimum:
 
 Do not infer success merely from issue closure. Success normally requires `exit_code: 0` plus expected output.
 
+The `request_sha256` in the result is the SHA-256 of the canonical validated JSON request, and must match the preflight attestation for that execution.
+
 ## 7. Target semantics
 
 ### Termux
@@ -219,7 +226,7 @@ Never place passwords, PATs, registration tokens, API secrets, private keys, or 
 
 Prefer already-authenticated local CLIs and local credential stores.
 
-The Native Agent fallback remains fail-closed with repository/owner checks, request schema validation, explicit confirmation, bounded timeouts, stdout/stderr capture, request hashing, replay protection, supervisor recovery, and boot persistence.
+The Native Agent fallback remains fail-closed with repository/owner checks, GitHub Actions pre-dispatch attestation, canonical request serialization/hash binding, request schema validation, explicit confirmation, body-edit invalidation, bounded timeouts, stdout/stderr capture, replay protection, supervisor recovery, and boot persistence.
 
 The Commander path must keep its saved device authorization local to the tablet.
 
