@@ -16,8 +16,11 @@ BOOT_HOOK="$BOOT_DIR/10-morro-remote-commander.sh"
 AUTH_FILE="${MORRO_COMMANDER_AUTH_FILE:-$HOME/.desktop-commander-device/device.json}"
 GLOBAL_PACKAGE="$PREFIX/lib/node_modules/@wonderwhy-er/desktop-commander"
 EXPECTED_VERSION="0.2.51"
+CONFIG_GUARD_SOURCE="$REPO_DIR/scripts/termux-remote-commander-config-guard.sh"
+CONFIG_GUARD_DIR="$PREFIX/libexec/morro"
+CONFIG_GUARD="$CONFIG_GUARD_DIR/termux-remote-commander-config-guard.sh"
 
-mkdir -p "$SERVICE_DIR" "$BOOT_DIR" "$HOME/.local/state/desktop-commander"
+mkdir -p "$SERVICE_DIR" "$BOOT_DIR" "$HOME/.local/state/desktop-commander" "$CONFIG_GUARD_DIR"
 
 if [[ ! -f "$GLOBAL_PACKAGE/package.json" ]]; then
   echo "direct_access=BLOCKED reason=GLOBAL_COMMANDER_MISSING" >&2
@@ -29,6 +32,13 @@ if [[ "$ACTUAL_VERSION" != "$EXPECTED_VERSION" ]]; then
   echo "direct_access=BLOCKED reason=UNVALIDATED_COMMANDER_VERSION actual=$ACTUAL_VERSION expected=$EXPECTED_VERSION" >&2
   exit 78
 fi
+
+if [[ ! -x "$CONFIG_GUARD_SOURCE" ]]; then
+  echo "direct_access=BLOCKED reason=CONFIG_GUARD_SOURCE_MISSING path=$CONFIG_GUARD_SOURCE" >&2
+  exit 69
+fi
+install -m 700 "$CONFIG_GUARD_SOURCE" "$CONFIG_GUARD"
+"$CONFIG_GUARD"
 
 cat >"$SERVICE_DIR/run" <<'EOF'
 #!/data/data/com.termux/files/usr/bin/sh
@@ -44,8 +54,14 @@ export TERM=xterm-256color
 export GIT_TERMINAL_PROMPT=0
 export TURBO_TELEMETRY_DISABLED=1
 mkdir -p "$TMPDIR" "$HOME/.local/state/desktop-commander"
+CONFIG_GUARD="$PREFIX/libexec/morro/termux-remote-commander-config-guard.sh"
+if [ ! -x "$CONFIG_GUARD" ]; then
+  echo "commander=BLOCKED reason=CONFIG_GUARD_MISSING path=$CONFIG_GUARD" >&2
+  exit 69
+fi
+"$CONFIG_GUARD" >>"$HOME/.local/state/desktop-commander/remote.log" 2>&1
 cd "$HOME"
-exec "$PREFIX/bin/node"   "$PREFIX/lib/node_modules/@wonderwhy-er/desktop-commander/dist/index.js"   remote >>"$HOME/.local/state/desktop-commander/remote.log" 2>&1
+exec "$PREFIX/bin/node" "$PREFIX/lib/node_modules/@wonderwhy-er/desktop-commander/dist/index.js" remote >>"$HOME/.local/state/desktop-commander/remote.log" 2>&1
 EOF
 chmod 700 "$SERVICE_DIR/run"
 

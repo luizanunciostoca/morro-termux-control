@@ -13,6 +13,7 @@ export LD_PRELOAD="$PREFIX/lib/libtermux-exec.so"
 SERVICE_DIR="$PREFIX/var/service/desktop-commander"
 AUTH_FILE="${MORRO_COMMANDER_AUTH_FILE:-$HOME/.desktop-commander-device/device.json}"
 PACKAGE="${MORRO_COMMANDER_PACKAGE:-@wonderwhy-er/desktop-commander@0.2.51}"
+CONFIG_GUARD="${MORRO_COMMANDER_CONFIG_GUARD:-$PREFIX/libexec/morro/termux-remote-commander-config-guard.sh}"
 
 require_runtime() {
   command -v node >/dev/null 2>&1 || { echo "commander=BLOCKED reason=NODE_MISSING" >&2; return 69; }
@@ -41,6 +42,9 @@ stop_service() {
 
 pair_device() {
   require_runtime
+  if [[ -x "$CONFIG_GUARD" ]]; then
+    "$CONFIG_GUARD"
+  fi
   stop_service >/dev/null 2>&1 || true
   echo "Starting interactive Remote Desktop Commander pairing."
   echo "Keep this terminal open until the CLI reports Device ready."
