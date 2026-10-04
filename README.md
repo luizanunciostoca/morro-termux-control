@@ -58,6 +58,10 @@ Issue body:
 
 Target may be `termux` or `debian`.
 
+### Pre-dispatch integrity
+
+Construct the issue body with a real JSON serializer, never by manual string interpolation. The `Native Agent Job Preflight` workflow validates and canonicalizes the exact issue body and posts a `MORRO_JOB_PREFLIGHT_V3` attestation containing its SHA-256. The tablet agent refuses to claim or execute a request unless a matching attestation from `github-actions[bot]` exists. Editing the body invalidates the old attestation. Invalid JSON is fail-closed before execution.
+
 ## Local controls
 
 ```bash

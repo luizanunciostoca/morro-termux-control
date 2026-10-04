@@ -7,6 +7,9 @@ POLL_SECONDS="${MORRO_AGENT_POLL_SECONDS:-30}"
 HEARTBEAT_SECONDS="${MORRO_AGENT_HEARTBEAT_SECONDS:-120}"
 AGENT_BUILD="native-v3"
 PROTOCOL_VERSION="2"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=scripts/termux-job-protocol.sh
+source "$SCRIPT_DIR/termux-job-protocol.sh"
 STATE_DIR="${MORRO_AGENT_STATE_DIR:-$HOME/.morro-termux-agent}"
 RESULT_DIR="$STATE_DIR/results"
 DONE_DIR="$STATE_DIR/done"
@@ -188,16 +191,23 @@ EOF
 }
 
 validate_request() {
-  jq -e '
-    type == "object" and
-    .version == 2 and
-    .confirm == "EXECUTE" and
-    (.id | type == "string" and test("^[A-Za-z0-9._-]{1,128}$")) and
-    (.target == "termux" or .target == "debian") and
-    (.command | type == "string" and length > 0) and
-    ((.cwd // "~") | type == "string" and length > 0) and
-    ((.timeout_seconds // 900) | type == "number" and . >= 1 and . <= 3600)
-  ' >/dev/null
+  morro_validate_request_file /dev/stdin
+}
+
+has_matching_preflight() {
+  local issue="$1" request_hash="$2" rows row body
+  if ! rows="$(gh api --paginate "/repos/$REPO/issues/$issue/comments?per_page=100" \
+    --jq '.[] | select(.user.login=="github-actions[bot]") | .body | @base64')"; then
+    return 1
+  fi
+  while IFS= read -r row; do
+    [[ -n "$row" ]] || continue
+    body="$(printf '%s' "$row" | base64 -d)"
+    if morro_preflight_body_matches "$body" "$request_hash"; then
+      return 0
+    fi
+  done <<<"$rows"
+  return 1
 }
 
 resolve_termux_cwd() {
@@ -287,6 +297,10 @@ execute_issue() {
   script_file="$RESULT_DIR/$issue/command.sh"
   mkdir -p "$RESULT_DIR/$issue"
 
+  if ! body="$(gh api "/repos/$REPO/issues/$issue" --jq '.body // ""')"; then
+    log "WAIT issue #$issue: unable to refetch current body"
+    return 0
+  fi
   printf '%s' "$body" > "$req_file"
 
   if ! validate_request < "$req_file"; then
@@ -301,7 +315,12 @@ execute_issue() {
   cwd="$(jq -r '.cwd // "~"' "$req_file")"
   timeout_s="$(jq -r '.timeout_seconds // 900 | floor' "$req_file")"
   command_text="$(jq -r '.command' "$req_file")"
-  request_hash="$(sha256sum "$req_file" | awk '{print $1}')"
+  request_hash="$(morro_request_sha256 "$req_file")"
+
+  if ! has_matching_preflight "$issue" "$request_hash"; then
+    log "WAIT issue #$issue: no matching github-actions preflight for request_sha256=$request_hash"
+    return 0
+  fi
 
   if [[ -f "$DONE_DIR/$issue.json" ]]; then
     if [[ -f "$result_path" ]]; then
@@ -326,6 +345,16 @@ execute_issue() {
       log "WARN unable to claim issue #$issue; skipping this cycle"
       return 0
     }
+
+  live_req="$RESULT_DIR/$issue/request-live.json"
+  if ! gh api "/repos/$REPO/issues/$issue" --jq '.body // ""' > "$live_req" ||
+     ! morro_validate_request_file "$live_req" ||
+     [[ "$(morro_request_sha256 "$live_req")" != "$request_hash" ]]; then
+    rm -f "$CLAIMED_DIR/$issue.json" "$live_req"
+    log "WAIT issue #$issue: body changed after preflight/claim; refusing execution"
+    return 0
+  fi
+  rm -f "$live_req"
 
   {
     echo '#!/data/data/com.termux/files/usr/bin/bash'
