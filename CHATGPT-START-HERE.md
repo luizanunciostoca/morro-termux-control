@@ -306,6 +306,8 @@ bash scripts/termux-native-agentctl.sh status
 bash scripts/termux-native-agentctl.sh recover
 ```
 
+A recuperação só está concluída quando **daemon e supervisor persistente** estão vivos. O comando `recover` deve restaurar ambos; um agente isolado sem `termux-native-supervisor.sh` não é estado persistente.
+
 ## 11. Acceptance evidence
 
 ### Native Agent fallback — historically validated
