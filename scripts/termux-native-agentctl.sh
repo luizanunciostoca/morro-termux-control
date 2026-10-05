@@ -8,12 +8,56 @@ LOCK_DIR="$STATE_DIR/daemon.lock"
 LOCK_PID_FILE="$LOCK_DIR/pid"
 STOP_FILE="$STATE_DIR/stop"
 LOG_FILE="$STATE_DIR/logs/agent.log"
+SUPERVISOR_PID_FILE="$STATE_DIR/supervisor.pid"
+SUPERVISOR_STOP_FILE="$STATE_DIR/supervisor.stop"
+SUPERVISOR_LOG_FILE="$STATE_DIR/logs/boot-supervisor.log"
+SUPERVISOR_SCRIPT="$REPO_DIR/scripts/termux-native-supervisor.sh"
 
 mkdir -p "$STATE_DIR/logs"
 
 is_live_pid() {
   local pid="${1:-}"
   [[ "$pid" =~ ^[0-9]+$ ]] && kill -0 "$pid" 2>/dev/null
+}
+
+pid_matches_supervisor() {
+  local pid="${1:-}" cmd
+  is_live_pid "$pid" || return 1
+  [[ -r "/proc/$pid/cmdline" ]] || return 1
+  cmd="$(tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null || true)"
+  [[ "$cmd" == *"$SUPERVISOR_SCRIPT"* ]]
+}
+
+ensure_supervisor() {
+  local pid launched_pid
+  pid="$(cat "$SUPERVISOR_PID_FILE" 2>/dev/null || true)"
+  if pid_matches_supervisor "$pid"; then
+    echo "supervisor=RUNNING pid=$pid"
+    return 0
+  fi
+
+  rm -f "$SUPERVISOR_PID_FILE" "$SUPERVISOR_STOP_FILE"
+  [[ -x "$SUPERVISOR_SCRIPT" || -f "$SUPERVISOR_SCRIPT" ]] || {
+    echo "supervisor=FAILED reason=SCRIPT_MISSING path=$SUPERVISOR_SCRIPT" >&2
+    return 69
+  }
+
+  nohup bash "$SUPERVISOR_SCRIPT" >> "$SUPERVISOR_LOG_FILE" 2>&1 &
+  launched_pid=$!
+
+  for _ in $(seq 1 40); do
+    pid="$(cat "$SUPERVISOR_PID_FILE" 2>/dev/null || true)"
+    if pid_matches_supervisor "$pid"; then
+      echo "supervisor=RUNNING pid=$pid"
+      return 0
+    fi
+    kill -0 "$launched_pid" 2>/dev/null || break
+    sleep 0.25
+  done
+
+  echo "supervisor=FAILED launched_pid=$launched_pid" >&2
+  tail -n 80 "$SUPERVISOR_LOG_FILE" 2>/dev/null || true
+  return 1
 }
 
 live_agent_pid() {
@@ -131,6 +175,7 @@ recover_agent() {
   rm -f "$PID_FILE" "$STOP_FILE"
 
   start_agent
+  ensure_supervisor
 }
 
 case "${1:-status}" in

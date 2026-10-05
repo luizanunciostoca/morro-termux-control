@@ -21,6 +21,8 @@ grep -Fq 'pid: $$' "$AGENT"
 grep -Fq "trap 'exit 0' INT TERM" "$AGENT"
 grep -Fq "trap 'cleanup_agent' EXIT" "$AGENT"
 grep -Fq 'recover)' "$CTL"
+grep -Fq 'ensure_supervisor' "$CTL"
+grep -Fq 'pid_matches_supervisor' "$CTL"
 grep -Fq "trap 'exit 0' INT TERM" "$SUP"
 
 if grep -Fq 'current canonical issue: **#' "$DOC"; then
