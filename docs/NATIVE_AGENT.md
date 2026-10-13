@@ -1,4 +1,4 @@
-# Native Termux Agent V2
+# Native Termux Agent V3
 
 Preferred persistent transport for the Morro Digital Android tablet.
 
@@ -49,3 +49,4 @@ bash scripts/termux-native-agentctl.sh logs
 ```
 
 The agent maintains an open GitHub issue named `[TERMUX-AGENT] status` as its remote heartbeat.
+
