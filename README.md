@@ -4,7 +4,7 @@
 
 Private control plane for persistent command execution on the Morro Digital Android/Termux workstation.
 
-## Preferred architecture — Native Termux Agent V2
+## Preferred architecture — Native Termux Agent V3
 
 ```
 ChatGPT
@@ -86,3 +86,4 @@ The original GitHub Actions self-hosted runner implementation remains in reposit
 The repository must remain private. The native agent only accepts jobs authored by `luizanunciostoca`, with the required title prefix, schema version, explicit execution confirmation, supported target, and bounded timeout.
 
 This bridge does not grant Android root privileges. Commands run only with permissions already available to Termux, Debian/PRoot, and separately authorized interfaces such as ADB or Termux:API.
+

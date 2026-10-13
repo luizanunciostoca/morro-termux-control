@@ -10,9 +10,9 @@ Canonical control repository:
 
 Repository visibility must remain **PRIVATE**.
 
-There are two supported remote execution transports.
+Native Termux Agent V3 over GitHub Issues is the canonical preferred transport, by the operator's current instruction. Commander is optional and must not be a prerequisite for tablet access. Its historical boot acceptance does not authorize restoring its autostart.
 
-### Primary — direct Remote Desktop Commander
+### Optional secondary — direct Remote Desktop Commander
 
 ```text
 ChatGPT
@@ -23,7 +23,7 @@ ChatGPT
 
 This path does **not** use GitHub Issues for command transport.
 
-The persistent local pieces are:
+Historical direct installation (do not assume these pieces are active):
 
 ```text
 ~/.termux/boot/10-morro-remote-commander.sh
@@ -34,7 +34,7 @@ The persistent local pieces are:
 
 This tablet uses Termux Google Play `googleplay.2026.06.21`; boot-hook support is integrated into the main Termux app, so no separate `com.termux.boot` package is required.
 
-### Fallback — Native Termux Agent V3 over GitHub Issues
+### Primary — Native Termux Agent V3 over GitHub Issues
 
 ```text
 ChatGPT
@@ -46,7 +46,7 @@ ChatGPT
   -> issue closed
 ```
 
-The fallback starts automatically after Android reboot:
+The Native Agent persistence chain is:
 
 ```text
 Android boot
@@ -62,15 +62,13 @@ Never conclude that the tablet is inaccessible merely because one transport is u
 
 For ordinary shell/filesystem/process work:
 
-1. Check Remote Desktop Commander device state first.
-2. If the tablet is online there, use Commander directly.
-3. If Commander is offline or unavailable, check the Native Agent heartbeat.
-4. If the Native Agent is healthy, use the GitHub-Issues fallback.
-5. Ask for manual tablet intervention only when both transports are unavailable or Android requires a physical/UI action.
+1. Read the live exact-title Native Agent heartbeat singleton.
+2. If the Native Agent is healthy, use schema-v2 GitHub Issues jobs and verify their bound results.
+3. If Native Agent execution is unavailable, Commander may be used when already available and its live health is proven.
+4. Do not install, pair, restart or restore Commander autostart merely to satisfy transport selection.
+5. Ask for manual tablet intervention only when no authorized remote route can perform the task or Android requires a physical/UI action.
 
-Do not route ordinary direct work through GitHub when Commander is healthy.
-
-The direct path has passed the full acceptance tests including Android reboot. Keep the GitHub Native Agent enabled as an independent fallback and recovery channel.
+Commander availability does not override the preferred Native Agent route. Preserve the Native Agent supervisor and boot persistence.
 
 ## 3. Direct Commander health and operation
 
@@ -98,9 +96,9 @@ bash scripts/termux-remote-commanderctl.sh pair
 
 The authenticated Remote Device session remains local to the tablet. Never commit device credentials or tokens to GitHub.
 
-## 4. Native Agent heartbeat fallback
+## 4. Native Agent heartbeat
 
-Before issuing a GitHub fallback job, enumerate all **open** issues whose title is exactly:
+Before issuing a Native Agent job, enumerate all **open** issues whose title is exactly:
 
 `[TERMUX-AGENT] status`
 
@@ -129,9 +127,9 @@ transport: GitHub Issues
 targets: termux,debian
 ```
 
-If the heartbeat is stale, allow at least one 60-second supervisor cycle before declaring the fallback unhealthy.
+If the heartbeat is stale, allow at least one 60-second supervisor cycle before declaring the Native Agent unhealthy.
 
-## 5. Creating a Native Agent fallback job
+## 5. Creating a Native Agent job
 
 Create a GitHub issue in the canonical private repository.
 
@@ -174,7 +172,7 @@ The agent accepts jobs only from the authorized repository owner.
 
 ## 6. Reading a Native Agent result
 
-A completed fallback job is normally closed and contains a comment beginning:
+A completed Native Agent job is normally closed and contains a comment beginning:
 
 ```text
 MORRO_AGENT_RESULT_V3
@@ -226,7 +224,7 @@ Never place passwords, PATs, registration tokens, API secrets, private keys, or 
 
 Prefer already-authenticated local CLIs and local credential stores.
 
-The Native Agent fallback remains fail-closed with repository/owner checks, GitHub Actions pre-dispatch attestation, canonical request serialization/hash binding, request schema validation, explicit confirmation, body-edit invalidation, bounded timeouts, stdout/stderr capture, replay protection, supervisor recovery, and boot persistence.
+The Native Agent remains fail-closed with repository/owner checks, GitHub Actions pre-dispatch attestation, canonical request serialization/hash binding, request schema validation, explicit confirmation, body-edit invalidation, bounded timeouts, stdout/stderr capture, replay protection, supervisor recovery, and boot persistence.
 
 The Commander path must keep its saved device authorization local to the tablet.
 
@@ -235,10 +233,10 @@ The Commander path must keep its saved device authorization local to the tablet.
 When the user asks to inspect, build, test, modify, run, deploy, diagnose, or operate something available through the tablet:
 
 1. Recapture the current `main` of this repository.
-2. Check Remote Desktop Commander device state.
-3. If online, use Commander directly and gather concrete evidence.
-4. If offline, check the exact-title Native Agent heartbeat singleton.
-5. If the fallback is healthy, use it.
+2. Check the exact-title Native Agent heartbeat singleton and freshness.
+3. If healthy, use Native Agent V3 and gather concrete request/result evidence.
+4. If Native execution is unavailable, check Commander only as an optional secondary route.
+5. Use a secondary route only after verifying its live health and task authorization.
 6. Iterate until the requested task is complete.
 7. Report the transport used and concrete result evidence.
 
@@ -277,7 +275,7 @@ See `docs/PLATFORM_WORKTREES.md` for the full lifecycle.
 
 ### Direct Commander offline
 
-First check the connected device list. If the tablet is offline and the Native Agent fallback is healthy, use the fallback to inspect/restart Commander.
+Commander being offline does not block work through a healthy Native Agent. Inspect or recover Commander only when the task specifically needs that optional route; do not restore autostart by default.
 
 Local recovery commands are:
 
@@ -310,7 +308,7 @@ A recuperação só está concluída quando **daemon e supervisor persistente** 
 
 ## 11. Acceptance evidence
 
-### Native Agent fallback — historically validated
+### Native Agent — historically validated
 
 Validated flows include:
 
@@ -323,9 +321,9 @@ Validated flows include:
 
 Historical proof issues include #15, #23, #25, #26 and #27. They are historical evidence only.
 
-### Direct Commander — accepted
+### Direct Commander — historical acceptance
 
-The direct path is fully accepted as the preferred operational transport.
+The direct path was accepted on 2026-10-01. That historical acceptance does not define the current transport preference or prove present boot configuration.
 
 Validated on 2026-10-01:
 
@@ -337,9 +335,9 @@ Validated on 2026-10-01:
 6. controlled runit service restart reconnects without re-pairing;
 7. Android reboot reconnects without manual command entry;
 8. post-reboot direct shell execution succeeds;
-9. Native Agent fallback also recovers after the same reboot and executes a real job successfully.
+9. Native Agent also recovers after the same reboot and executes a real job successfully.
 
-Historical post-reboot fallback proof: issue #569. Treat that issue only as evidence; always check current live state before acting.
+Historical post-reboot Native Agent proof: issue #569. Treat that issue only as evidence; always check current live state before acting.
 
 ## 12. Canonical files
 
@@ -348,16 +346,16 @@ Historical post-reboot fallback proof: issue #569. Treat that issue only as evid
 - `scripts/termux-remote-commanderctl.sh` — direct device lifecycle controller
 - `scripts/install-direct-commander.sh` — Termux:Boot installer
 - `scripts/direct-commander-bootstrap.test.sh` — direct bootstrap regression proof
-- `scripts/termux-native-agent.sh` — GitHub fallback job agent
-- `scripts/termux-native-agentctl.sh` — fallback lifecycle controller
-- `scripts/termux-native-supervisor.sh` — fallback recovery supervisor
-- `scripts/termux-native-agent-heartbeat.test.sh` — fallback lifecycle/singleton regression proof
+- `scripts/termux-native-agent.sh` — GitHub job agent
+- `scripts/termux-native-agentctl.sh` — Native Agent lifecycle controller
+- `scripts/termux-native-supervisor.sh` — Native Agent recovery supervisor
+- `scripts/termux-native-agent-heartbeat.test.sh` — Native Agent lifecycle/singleton regression proof
 - `scripts/tdp-worktreectl.sh` — exact-SHA bare-store/disposable-worktree controller
 - `scripts/tdp-worktreectl.test.sh` — worktree lifecycle regression proof
-- `docs/NATIVE_AGENT.md` — fallback architecture documentation
+- `docs/NATIVE_AGENT.md` — Native Agent architecture documentation
 - `docs/PLATFORM_WORKTREES.md` — Touristic Digital Platform checkout/worktree runbook
-- `~/.termux/boot/10-morro-remote-commander.sh` — direct tablet boot hook after installation
-- `~/.termux/boot/20-morro-native-agent.sh` — fallback tablet boot hook
+- `~/.termux/boot/10-morro-remote-commander.sh` — historical optional direct boot hook; do not restore by default
+- `~/.termux/boot/20-morro-native-agent.sh` — Native Agent tablet boot hook
 
 ## 13. Authority rule
 
@@ -367,9 +365,10 @@ Before modifying code or assuming state:
 
 ```text
 fetch current main
-check direct Commander device state
-check live heartbeat fallback
-check current job/result state when using GitHub fallback
+check live Native Agent heartbeat singleton and freshness
+check current job/result state and hash binding
+check Commander live health only when using that optional route
 ```
 
-The live repository plus the live state of both transports are the source of truth.
+The live repository defines the execution contract; current transport observations prove availability. Operator authorization defines allowed actions. Historical transport acceptance never overrides the current Native Agent preference.
+
