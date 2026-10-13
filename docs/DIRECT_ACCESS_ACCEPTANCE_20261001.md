@@ -1,6 +1,8 @@
-# Direct Access Acceptance — 2026-10-01
+# Historical Direct Access Acceptance — 2026-10-01
 
-## Scope
+This document preserves evidence and the transport decision from 2026-10-01. It is not the current operating contract. Native Termux Agent V3 is now the preferred transport; follow [CHATGPT-START-HERE.md](../CHATGPT-START-HERE.md) and verify live state before execution. Historical Commander boot acceptance does not authorize restoring its autostart.
+
+## Scope at the time of acceptance
 
 Final acceptance of the persistent, non-GitHub primary access path to the Morro Digital Android/Termux tablet, with Native Termux Agent V3 retained as independent fallback.
 
@@ -56,7 +58,7 @@ Wireless debugging was also validated before reboot:
 
 The Wireless Debugging endpoint is ephemeral and must not be hardcoded.
 
-## Decision
+## Historical decision — superseded transport preference
 
 ```text
 DIRECT_COMMANDER_PRIMARY = ACCEPTED
@@ -65,4 +67,4 @@ POST_REBOOT_PERSISTENCE = PASS
 MANUAL_PAIRING_AFTER_REBOOT = NOT_REQUIRED
 ```
 
-Future sessions must check live state first and use direct Commander when healthy.
+Future sessions must use the current operating contract: check the live Native Agent heartbeat singleton first and use Native Agent V3 when healthy. Commander remains an optional secondary route; its availability does not override that preference.
